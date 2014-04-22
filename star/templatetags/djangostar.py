@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from django.template import TemplateSyntaxError
 
-from ..models import Star
+# from ..models import Star
 
 register = template.Library()
 
@@ -31,7 +31,7 @@ class RenderDjangoStarListNode(template.Node):
         html = render_to_string('star/list.html', {
                                                    'content_type' : content_type.pk, 
                                                    'object_id' : object.pk,
-                                                   'api_url' : reverse('star-api', args=[content_type.pk, object.pk])
+                                                   'api_url' : reverse('star-api', kwargs={'content_type':content_type.pk,'object_id':object.pk})
         }, context)
         context.pop()
         return html
