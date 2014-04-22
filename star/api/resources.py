@@ -8,26 +8,67 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.contenttypes.models import ContentType
 from tastypie.resources import Resource,ModelResource
+from tastypie.constants import ALL, ALL_WITH_RELATIONS
 from ..models import Star
 from django.conf.urls import url
+from tastypie.authentication import SessionAuthentication
+import urlparse
+from tastypie.serializers import Serializer
+
+
+class urlencodeSerializer(Serializer):
+    formats = ['json', 'jsonp', 'xml', 'yaml', 'html', 'plist', 'urlencode']
+    content_types = {
+        'json': 'application/json',
+        'jsonp': 'text/javascript',
+        'xml': 'application/xml',
+        'yaml': 'text/yaml',
+        'html': 'text/html',
+        'plist': 'application/x-plist',
+        'urlencode': 'application/x-www-form-urlencoded',
+        }
+    def from_urlencode(self, data,options=None):
+        """ handles basic formencoded url posts """
+        qs = dict((k, v if len(v)>1 else v[0] )
+            for k, v in urlparse.parse_qs(data).iteritems())
+        return qs
+
+    def to_urlencode(self,content):
+        pass
+
 class StarResource(ModelResource):
     class Meta:
         resource_name = 'star'
         queryset=Star.objects.all()
         allowed_method = ('GET', 'POST', 'DELETE',)
+        authentication = SessionAuthentication()
+        filtering = {"object_id": ALL }
+        serializer = urlencodeSerializer() # IMPORTANT
         # detail_uri_name = 'object_id'
     def prepend_urls(self):
         return [
-            url(r"^(?P<content_type>\d+)/(?P<object_id>\d+)/$" , self.wrap_view('dispatch_detail'), name="star-api"),
-            url(r"^%s/(?P<content_type>\d+)/(?P<object_id>\d+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail')),
+            url(r"^(?P<content_type>\d+)/(?P<object_id>\d+)/$" , self.wrap_view('dispatch_list'),name="star-api"),
+            url(r"^(?P<resource_name>%s)/(?P<content_type>\d+)/(?P<object_id>\d+)/$" % self._meta.resource_name, self.wrap_view('dispatch_list'),name="star-api"),
             # url(r'^(?P<content_type>\d+)/(?P<object_id>\d+)/(?P<star_id>\d+)/$', v1_api.top_level, name='star-api')
         ]
+    # def obj_get(self, bundle, **kwargs):
+    #     bucket = self._meta.queryset
+    #     print '3333',kwargs
+    #     args=dict(kwargs)
+    #     print args
+    #     instance = bucket.filter(**args)
+    #     print "2222",instance
+    #     from django.forms.models import model_to_dict
+    #     return model_to_dict(instance)
+    def obj_create(self, bundle, **kwargs):
+        kwargs['comment']=bundle.request.POST['comment']
+        kwargs['author']=bundle.request.user
+        return super(StarResource, self).obj_create(bundle, **kwargs)
     def dispatch(self, request_type, request, **kwargs):
+        # print kwargs
         content_type_id = kwargs.pop('content_type')
-        object_id = kwargs['object_id']
         content_type = get_object_or_404(ContentType, pk=content_type_id)
         kwargs['content_type']=content_type
-        print kwargs
         return super(StarResource, self).dispatch(request_type, request, **kwargs)
 # def get_or_not_found(fn):
 #     """Get and set object or return rc.NOT_FOUND decorator

@@ -9,7 +9,7 @@ from django.conf.urls import url,patterns,include
 
 # from handlers import StarHandler
 from resources import StarResource
-from tastypie.api import Api
+# from tastypie.api import Api
 # star_handler = Resource(StarHandler)
 # v1_api = Api()
 # v1_api.register(StarResource())

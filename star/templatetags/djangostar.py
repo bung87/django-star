@@ -31,7 +31,7 @@ class RenderDjangoStarListNode(template.Node):
         html = render_to_string('star/list.html', {
                                                    'content_type' : content_type.pk, 
                                                    'object_id' : object.pk,
-                                                   'api_url' : reverse('star-api', kwargs={'content_type':content_type.pk,'object_id':object.pk})
+                                                   'api_url' : reverse('star-api', kwargs={'resource_name':'star','content_type':content_type.pk,'object_id':object.pk})
         }, context)
         context.pop()
         return html
