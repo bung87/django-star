@@ -39,7 +39,7 @@
 
             var createStar = function(data) {
                 var username = data.author.username;
-                var user_id = parseInt(data.author.pk);
+                var user_id = parseInt(data.author.id);
                 var comment = data.comment;
                 var $star = $('<li>');
                 var $popup = $('<div>').addClass('django-star-popup');
@@ -90,7 +90,7 @@
             $this.append($container);
             $.getJSON(url, function(data) {
                 var nocomments = {};
-                $(data).each( function() {
+                $(data.objects).each( function() {
                     if(this.comment == '') {
                         if(!nocomments[this.author.username]) {
                             nocomments[this.author.username] = 1;
