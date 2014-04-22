@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 #    
-#    api.handlers
-#    created by giginet on 2011/09/20
+#    api.resource
+#    created by bung on 2014/04/22
 #
-from django.http import Http404
+
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.contenttypes.models import ContentType
-from tastypie.resources import Resource,ModelResource
-from tastypie.constants import ALL, ALL_WITH_RELATIONS
+from tastypie.constants import ALL
 from ..models import Star
 from django.conf.urls import url
-from tastypie.authentication import SessionAuthentication
 import urlparse
 from tastypie.serializers import Serializer
+from tastypie.authorization import DjangoAuthorization
+from tastypie.resources import ModelResource
 
 
 class urlencodeSerializer(Serializer):
@@ -41,93 +40,29 @@ class StarResource(ModelResource):
         resource_name = 'star'
         queryset=Star.objects.all()
         allowed_method = ('GET', 'POST', 'DELETE',)
-        authentication = SessionAuthentication()
+        authorization = DjangoAuthorization()
         filtering = {"object_id": ALL }
-        serializer = urlencodeSerializer() # IMPORTANT
-        # detail_uri_name = 'object_id'
+        serializer = urlencodeSerializer()
+
     def prepend_urls(self):
         return [
-            url(r"^(?P<content_type>\d+)/(?P<object_id>\d+)/$" , self.wrap_view('dispatch_list'),name="star-api"),
             url(r"^(?P<resource_name>%s)/(?P<content_type>\d+)/(?P<object_id>\d+)/$" % self._meta.resource_name, self.wrap_view('dispatch_list'),name="star-api"),
-            # url(r'^(?P<content_type>\d+)/(?P<object_id>\d+)/(?P<star_id>\d+)/$', v1_api.top_level, name='star-api')
+            url(r'^(?P<resource_name>%s)/(?P<content_type>\d+)/(?P<object_id>\d+)/(?P<star_id>\d+)/$'% self._meta.resource_name,self.wrap_view('dispatch_list'), name='star-api')
         ]
-    # def obj_get(self, bundle, **kwargs):
-    #     bucket = self._meta.queryset
-    #     print '3333',kwargs
-    #     args=dict(kwargs)
-    #     print args
-    #     instance = bucket.filter(**args)
-    #     print "2222",instance
-    #     from django.forms.models import model_to_dict
-    #     return model_to_dict(instance)
+
     def obj_create(self, bundle, **kwargs):
         kwargs['comment']=bundle.request.POST['comment']
         kwargs['author']=bundle.request.user
         return super(StarResource, self).obj_create(bundle, **kwargs)
+    def obj_delete(self, bundle, **kwargs):
+        kwargs['author']=bundle.request.user
+        kwargs['id'] = kwargs['star_id']
+        return super(StarResource, self).obj_delete(bundle, **kwargs)
     def dispatch(self, request_type, request, **kwargs):
-        # print kwargs
         content_type_id = kwargs.pop('content_type')
         content_type = get_object_or_404(ContentType, pk=content_type_id)
         kwargs['content_type']=content_type
         return super(StarResource, self).dispatch(request_type, request, **kwargs)
-# def get_or_not_found(fn):
-#     """Get and set object or return rc.NOT_FOUND decorator
-#        Get object instance from content_type and object_id and set it to request.obj
-#        and call decorated function, or return rc.NOT_FOUND when object could not be found
-#        this snippet is quoted from 'hhny ^/ttps://github.com/lambdalisue/django-universaltag/blob/master/universaltag/api/handlers.py#L45'.
-#     """
-#     def wrapper(self, bundle, content_type, object_id, *args, **kwargs):
-#         try:
-#             ctype = get_object_or_404(ContentType, pk=content_type)
-#             obj = ctype.get_object_for_this_type(pk=object_id)
-#             bundle.obj = obj
-#             return fn(self, bundle, content_type, object_id, *args, **kwargs)
-#         except (Http404, ObjectDoesNotExist):
-#             pass
-#             # return rc.NOT_FOUND
-#     return wrapper
-#
-# class StarResource(Resource):
-#
-#     class Meta:
-#         # queryset = Star.objects.all()
-#         resource_name = 'star'
-#         object_class = Star
-#         allowed_method = ('GET', 'POST', 'DELETE',)
-#     # def prepend_urls(self):
-#     #     return urlpatterns
-#
-#
-#     # fields = (
-#     #           'pk',
-#     #           'type',
-#     #           ('author', ('username', 'pk', ), ),
-#     #           'comment'
-#     # )
-#     @get_or_not_found
-#     def obj_get(self, bundle, **kwargs):
-#         bucket = self._bucket()
-#         instance = bucket.get_for_object(bundle.obj)
-#         from django.forms.models import model_to_dict
-#         return model_to_dict(instance)
-#     @get_or_not_found
-#     def read(self, request, content_type, object_id):
-#         qs = self.model.objects.get_for_object(request.obj)
-#         return qs
-#
-#     @get_or_not_found
-#     def create(self, request, content_type, object_id):
-#         comment = request.POST.get('comment', '');
-#         tag = request.POST.get('tag', '');
-#         if request.user.is_authenticated():
-#             instance = self.model.objects.add_for_object(request.obj, request.user, comment, tag)
-#             return instance
-#         return rc.FORBIDDEN
-#
-#     def delete(self, request, content_type, object_id, star_id):
-#         if not star_id: rc.BAD_REQUEST
-#         star = self.model.objects.get(pk=star_id)
-#         if request.user.is_authenticated() and request.user.pk is star.author.pk:
-#             star.delete()
+
 #             return rc.DELETED
 #         return rc.FORBIDDEN
